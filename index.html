@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contrastive Learning — Interactive Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0D1117;
+    --surface: #161B22;
+    --card:    #1C2333;
+    --teal:    #00C9A7;
+    --teal2:   #00896F;
+    --coral:   #F78166;
+    --purple:  #BC8CFF;
+    --gold:    #E3B341;
+    --white:   #F0F6FC;
+    --muted:   #8B949E;
+    --border:  #30363D;
+    --mono:    'JetBrains Mono', monospace;
+    --sans:    'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,17,23,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0;
+    padding: 0 2rem; height: 52px;
+  }
+  .nav-logo {
+    font-weight: 800; font-size: 0.85rem; letter-spacing: 0.08em;
+    color: var(--teal); text-transform: uppercase; margin-right: auto;
+  }
+  .nav-links { display: flex; gap: 0; }
+  .nav-links a {
+    display: flex; align-items: center; height: 52px;
+    padding: 0 1.1rem; font-size: 0.78rem; font-weight: 600;
+    color: var(--muted); text-decoration: none; letter-spacing: 0.04em;
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .nav-links a:hover, .nav-links a.active {
+    color: var(--teal); border-bottom-color: var(--teal);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 5rem 2rem 3rem;
+    max-width: 860px; margin: 0 auto; text-align: center;
+  }
+  .chip {
+    display: inline-block; padding: 0.3rem 0.8rem;
+    background: rgba(0,201,167,0.12); border: 1px solid var(--teal2);
+    border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+    color: var(--teal); letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 1.4rem;
+  }
+  .hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3.6rem); font-weight: 800; line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+  .hero h1 span { color: var(--teal); }
+  .hero p {
+    font-size: 1.05rem; color: var(--muted); line-height: 1.7;
+    max-width: 600px; margin: 0 auto 2rem;
+    font-family: var(--mono); font-size: 0.88rem;
+  }
+  .hero-ref {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+    opacity: 0.6;
+  }
+
+  /* ── SECTIONS ── */
+  section {
+    max-width: 960px; margin: 0 auto; padding: 3rem 2rem;
+    border-top: 1px solid var(--border);
+  }
+  .section-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--teal); margin-bottom: 0.5rem;
+  }
+  .section-title {
+    font-size: 1.6rem; font-weight: 800; margin-bottom: 0.6rem;
+  }
+  .section-desc {
+    font-family: var(--mono); font-size: 0.82rem; color: var(--muted);
+    line-height: 1.7; margin-bottom: 2rem; max-width: 660px;
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.4rem;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.5rem 1.1rem; border-radius: 6px; font-weight: 700;
+    font-size: 0.8rem; font-family: var(--sans); cursor: pointer;
+    border: none; transition: all 0.18s; letter-spacing: 0.03em;
+  }
+  .btn-primary { background: var(--teal); color: var(--bg); }
+  .btn-primary:hover { background: #00e8c0; }
+  .btn-secondary {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { color: var(--white); border-color: var(--muted); }
+  .btn-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+
+  /* ══════════════════════════════════════
+     SECTION 1 — EMBEDDING SPACE
+  ══════════════════════════════════════ */
+  #embedding { scroll-margin-top: 60px; }
+
+  .embed-layout {
+    display: grid; grid-template-columns: 1fr 280px; gap: 1.2rem;
+    align-items: start;
+  }
+  @media (max-width: 680px) { .embed-layout { grid-template-columns: 1fr; } }
+
+  #embedCanvas {
+    width: 100%; aspect-ratio: 1; border-radius: 8px;
+    background: #0A0E13; border: 1px solid var(--border);
+    display: block;
+  }
+
+  .embed-info { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .epoch-display {
+    font-family: var(--mono); font-size: 0.78rem; color: var(--muted);
+    display: flex; justify-content: space-between;
+  }
+  .epoch-display span { color: var(--teal); font-weight: 700; }
+
+  .progress-bar {
+    height: 4px; background: var(--border); border-radius: 999px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--teal); border-radius: 999px;
+    transition: width 0.1s linear; width: 0%;
+  }
+
+  .legend-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.78rem; color: var(--muted); font-family: var(--mono);
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  .loss-display {
+    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+  }
+  .loss-val { font-size: 1.4rem; font-weight: 700; color: var(--teal); display: block; }
+
+  /* ══════════════════════════════════════
+     SECTION 2 — AUGMENTATION
+  ══════════════════════════════════════ */
+  #augmentation { scroll-margin-top: 60px; }
+
+  .aug-layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;
+  }
+  @media (max-width: 640px) { .aug-layout { grid-template-columns: 1fr; } }
+
+  .aug-view {
+    background: #0A0E13; border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  .aug-view-label {
+    padding: 0.5rem 0.8rem; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .aug-view-label.pos { color: var(--teal); }
+  .aug-view-label.neg { color: var(--coral); }
+  canvas.aug-canvas { width: 100%; display: block; }
+
+  .aug-controls {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .aug-toggle {
+    display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+    padding: 0.55rem 0.8rem; border-radius: 6px;
+    background: var(--card); border: 1px solid var(--border);
+    font-size: 0.78rem; font-family: var(--sans); color: var(--muted);
+    transition: all 0.18s; user-select: none;
+  }
+  .aug-toggle.on {
+    border-color: var(--teal); color: var(--white);
+    background: rgba(0,201,167,0.08);
+  }
+  .aug-toggle .tog-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0; transition: background 0.2s;
+  }
+  .aug-toggle.on .tog-dot { background: var(--teal); }
+
+  .pair-label {
+    font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+    text-align: center; padding: 0.6rem;
+  }
+  .pair-label strong { color: var(--teal); }
+
+  /* ══════════════════════════════════════
+     SECTION 3 — NT-XENT EXPLORER
+  ══════════════════════════════════════ */
+  #loss { scroll-margin-top: 60px; }
+
+  .loss-layout {
+    display: grid; grid-template-columns: 340px 1fr; gap: 1.4rem;
+    align-items: start;
+  }
+  @media (max-width: 700px) { .loss-layout { grid-template-columns: 1fr; } }
+
+  .slider-group { margin-bottom: 1.2rem; }
+  .slider-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 0.4rem;
+  }
+  .slider-label span { font-size: 0.82rem; font-weight: 600; }
+  .slider-label code {
+    font-family: var(--mono); font-size: 0.82rem; color: var(--teal);
+    background: rgba(0,201,167,0.1); padding: 0.1rem 0.4rem; border-radius: 4px;
+  }
+  .slider-desc { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); margin-bottom: 0.5rem; }
+
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: var(--border); border-radius: 999px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--teal); border: 2px solid var(--bg); cursor: pointer;
+  }
+
+  .formula-box {
+    background: #0A0E13; border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.2rem;
+    font-family: var(--mono); font-size: 0.8rem;
+  }
+  .formula-static { color: var(--muted); margin-bottom: 1rem; line-height: 1.8; }
+  .formula-static strong { color: var(--white); }
+
+  .loss-output {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-top: 1rem;
+  }
+  .loss-metric { background: var(--card); border-radius: 6px; padding: 0.8rem; }
+  .loss-metric-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.2rem; }
+  .loss-metric-val { font-size: 1.3rem; font-weight: 700; font-family: var(--mono); color: var(--teal); }
+
+  #lossChart {
+    width: 100%; height: 200px; border-radius: 6px;
+    background: #0A0E13; border: 1px solid var(--border); display: block;
+  }
+  .chart-label {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+    text-align: center; margin-top: 0.3rem;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border); padding: 2rem;
+    text-align: center; font-family: var(--mono);
+    font-size: 0.72rem; color: var(--muted);
+  }
+  footer a { color: var(--teal); text-decoration: none; }
+
+  /* ── CALLOUT ── */
+  .callout {
+    display: flex; gap: 0.8rem; align-items: flex-start;
+    background: rgba(0,201,167,0.06); border: 1px solid var(--teal2);
+    border-radius: 8px; padding: 0.9rem 1.1rem; margin-bottom: 1.2rem;
+  }
+  .callout-icon { font-size: 1rem; margin-top: 0.1rem; color: var(--teal); flex-shrink: 0; }
+  .callout-text { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+  .callout-text strong { color: var(--white); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Contrastive Learning</div>
+  <div class="nav-links">
+    <a href="#embedding">Embedding Space</a>
+    <a href="#augmentation">Augmentation</a>
+    <a href="#loss">NT-Xent Loss</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="chip">CS 5330 · Assessment #2</div>
+  <h1>Learning Without <span>Labels</span></h1>
+  <p>An interactive walkthrough of contrastive self-supervised learning via SimCLR. Explore how embedding spaces form, how augmentation creates positive pairs, and how the NT-Xent loss works.</p>
+  <div class="hero-ref">Chen et al. 2020 — arXiv:2002.05709</div>
+</div>
+
+<!-- ══════════════ SECTION 1: EMBEDDING SPACE ══════════════ -->
+<section id="embedding">
+  <div class="section-label">Demo 01</div>
+  <div class="section-title">Embedding Space Training</div>
+  <div class="section-desc">Watch how contrastive learning organizes representations. Each colored cluster is a different class. At epoch 0 embeddings are random — by epoch 50 they've separated into tight clusters without a single label.</div>
+
+  <div class="callout">
+    <div class="callout-icon">→</div>
+    <div class="callout-text"><strong>What to look for:</strong> Points of the same color (class) pull together while different classes push apart. This happens purely from the positive/negative pair signal — no class labels are used.</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="embedPlay">▶ Play</button>
+    <button class="btn btn-secondary" id="embedReset">↺ Reset</button>
+  </div>
+
+  <div class="embed-layout">
+    <div>
+      <canvas id="embedCanvas" width="520" height="520"></canvas>
+    </div>
+    <div class="embed-info">
+      <div class="epoch-display">
+        <span>Epoch</span>
+        <span id="epochNum">0 / 50</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="embedProgress"></div></div>
+
+      <div class="card" style="margin-top:0.4rem;">
+        <div class="loss-display">
+          <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.3rem;">NT-Xent Loss</div>
+          <span class="loss-val" id="lossVal">—</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.7rem;">Legend</div>
+        <div style="display:flex;flex-direction:column;gap:0.45rem;" id="embedLegend"></div>
+      </div>
+
+      <div class="card">
+        <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);line-height:1.7;">
+          <strong style="color:var(--white);display:block;margin-bottom:0.4rem;">How it works</strong>
+          Each point is a 2D embedding. Same-class points are positive pairs — the loss pulls them together. All cross-class pairs are negatives — they get pushed apart.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ SECTION 2: AUGMENTATION ══════════════ -->
+<section id="augmentation">
+  <div class="section-label">Demo 02</div>
+  <div class="section-title">Augmentation Playground</div>
+  <div class="section-desc">Toggle augmentations on/off and see how two different views of the same image form a positive pair. The model must learn that these two views — despite looking different — represent the same underlying image.</div>
+
+  <div class="callout">
+    <div class="callout-icon">→</div>
+    <div class="callout-text"><strong>SimCLR key finding:</strong> Crop + Color Jitter together is the strongest combination. Each augmentation alone barely helps — their composition is what forces the encoder to learn meaningful structure.</div>
+  </div>
+
+  <div class="aug-controls" id="augControls"></div>
+
+  <div class="aug-layout">
+    <div class="aug-view">
+      <div class="aug-view-label pos">View A — x̃ᵢ</div>
+      <canvas class="aug-canvas" id="augCanvasA" width="320" height="280"></canvas>
+    </div>
+    <div class="aug-view">
+      <div class="aug-view-label neg">View B — x̃ⱼ</div>
+      <canvas class="aug-canvas" id="augCanvasB" width="320" height="280"></canvas>
+    </div>
+  </div>
+  <div class="pair-label">Both views are a <strong>positive pair</strong> — same image, different augmentations. The encoder must produce similar embeddings for both.</div>
+</section>
+
+<!-- ══════════════ SECTION 3: NT-XENT LOSS ══════════════ -->
+<section id="loss">
+  <div class="section-label">Demo 03</div>
+  <div class="section-title">NT-Xent Loss Explorer</div>
+  <div class="section-desc">Adjust temperature τ and batch size N to see how the loss landscape changes. The chart shows loss values across different positive-pair similarity scores.</div>
+
+  <div class="loss-layout">
+    <div>
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Temperature τ</span>
+          <code id="tauVal">0.07</code>
+        </div>
+        <div class="slider-desc">Controls sharpness. Lower τ → model focuses on hardest negatives.</div>
+        <input type="range" id="tauSlider" min="0.05" max="1.0" step="0.01" value="0.07">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Batch Size N</span>
+          <code id="batchVal">256</code>
+        </div>
+        <div class="slider-desc">Larger batches = more negatives = harder problem = better learning.</div>
+        <input type="range" id="batchSlider" min="32" max="4096" step="32" value="256">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Positive Similarity</span>
+          <code id="simVal">0.80</code>
+        </div>
+        <div class="slider-desc">sim(zᵢ, zⱼ) — cosine similarity of the positive pair.</div>
+        <input type="range" id="simSlider" min="-1.0" max="1.0" step="0.01" value="0.80">
+      </div>
+
+      <div class="formula-box">
+        <div class="formula-static">
+          <strong>ℓ(i,j)</strong> = −log [<br>
+          &nbsp;&nbsp;exp(<strong>sim(zᵢ,zⱼ)</strong>/τ)<br>
+          &nbsp;&nbsp;————————————————<br>
+          &nbsp;&nbsp;Σₖ exp(sim(zᵢ,zₖ)/τ)<br>
+          ]
+        </div>
+        <div class="loss-output">
+          <div class="loss-metric">
+            <div class="loss-metric-label">Loss ℓ(i,j)</div>
+            <div class="loss-metric-val" id="lossResult">—</div>
+          </div>
+          <div class="loss-metric">
+            <div class="loss-metric-label">Negatives</div>
+            <div class="loss-metric-val" id="negCount">—</div>
+          </div>
+          <div class="loss-metric">
+            <div class="loss-metric-label">Numerator</div>
+            <div class="loss-metric-val" id="numeratorVal">—</div>
+          </div>
+          <div class="loss-metric">
+            <div class="loss-metric-label">Denominator</div>
+            <div class="loss-metric-val" id="denominatorVal">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <canvas id="lossChart" width="520" height="200"></canvas>
+      <div class="chart-label">Loss vs. Positive Pair Similarity — shaded region shows current τ's effect</div>
+      <div style="margin-top:1rem;">
+        <canvas id="negChart" width="520" height="180"></canvas>
+        <div class="chart-label">Loss vs. Batch Size (at current τ and similarity)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Built for CS 5330 Assessment #2 · <a href="https://arxiv.org/abs/2002.05709" target="_blank">Chen et al. 2020 — SimCLR</a>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// SECTION 1 — EMBEDDING SPACE ANIMATION
+// ═══════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('embedCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const CLASSES = [
+    { name: 'Class A', color: '#00C9A7' },
+    { name: 'Class B', color: '#F78166' },
+    { name: 'Class C', color: '#BC8CFF' },
+    { name: 'Class D', color: '#E3B341' },
+    { name: 'Class E', color: '#58A6FF' },
+  ];
+
+  const POINTS_PER_CLASS = 12;
+  const MAX_EPOCH = 50;
+
+  // Final cluster centers (normalized 0-1)
+  const CENTERS = [
+    [0.22, 0.22], [0.78, 0.22], [0.5, 0.72],
+    [0.22, 0.72], [0.78, 0.72]
+  ];
+
+  let points = [];
+  let epoch = 0;
+  let animId = null;
+  let playing = false;
+  let lastTime = 0;
+  const EPOCH_DURATION = 220; // ms per epoch
+
+  function initPoints() {
+    points = [];
+    CLASSES.forEach((cls, ci) => {
+      for (let i = 0; i < POINTS_PER_CLASS; i++) {
+        points.push({
+          cls: ci,
+          // random start
+          sx: 0.15 + Math.random() * 0.7,
+          sy: 0.15 + Math.random() * 0.7,
+          // final cluster position with jitter
+          tx: CENTERS[ci][0] + (Math.random() - 0.5) * 0.12,
+          ty: CENTERS[ci][1] + (Math.random() - 0.5) * 0.12,
+        });
+      }
+    });
+  }
+
+  function easeInOut(t) {
+    return t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+  }
+
+  function drawPoint(x, y, color, alpha, r=5) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGrid() {
+    ctx.save();
+    ctx.strokeStyle = '#1C2333';
+    ctx.lineWidth = 1;
+    const step = W / 8;
+    for (let x = step; x < W; x += step) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = step; y < H; y += step) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAxesLabels() {
+    ctx.save();
+    ctx.font = '11px JetBrains Mono, monospace';
+    ctx.fillStyle = '#30363D';
+    ctx.fillText('embedding dim 1 →', 10, H - 10);
+    ctx.save();
+    ctx.translate(14, H - 30);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText('embedding dim 2 →', 0, 0);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  function getLossEstimate(t) {
+    // Rough proxy: high when embeddings are random, drops as clusters form
+    return (3.5 * Math.exp(-3.5 * t) + 0.3).toFixed(3);
+  }
+
+  function render(t) {
+    const progress = Math.min(t / MAX_EPOCH, 1);
+    const ep = easeInOut(progress);
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0A0E13';
+    ctx.fillRect(0, 0, W, H);
+    drawGrid();
+    drawAxesLabels();
+
+    // Draw faint connecting lines within same class (show pull)
+    if (progress > 0.15) {
+      const alpha = Math.min((progress - 0.15) * 2, 0.15);
+      CLASSES.forEach((cls, ci) => {
+        const pts = points.filter(p => p.cls === ci);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = cls.color;
+        ctx.lineWidth = 0.8;
+        for (let a = 0; a < pts.length; a++) {
+          for (let b = a+1; b < pts.length; b++) {
+            const ax = (pts[a].sx + ep*(pts[a].tx-pts[a].sx))*W;
+            const ay = (pts[a].sy + ep*(pts[a].ty-pts[a].sy))*H;
+            const bx = (pts[b].sx + ep*(pts[b].tx-pts[b].sx))*W;
+            const by = (pts[b].sy + ep*(pts[b].ty-pts[b].sy))*H;
+            ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+          }
+        }
+        ctx.restore();
+      });
+    }
+
+    // Draw points
+    points.forEach(p => {
+      const x = (p.sx + ep*(p.tx - p.sx)) * W;
+      const y = (p.sy + ep*(p.ty - p.sy)) * H;
+      const cls = CLASSES[p.cls];
+      // glow
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI*2);
+      ctx.fillStyle = cls.color; ctx.fill();
+      ctx.restore();
+      drawPoint(x, y, cls.color, 0.9);
+    });
+
+    // Update UI
+    document.getElementById('epochNum').textContent = `${Math.round(t)} / ${MAX_EPOCH}`;
+    document.getElementById('embedProgress').style.width = (progress * 100) + '%';
+    document.getElementById('lossVal').textContent = getLossEstimate(progress);
+  }
+
+  function step(ts) {
+    if (!playing) return;
+    if (lastTime === 0) lastTime = ts;
+    const dt = ts - lastTime;
+    lastTime = ts;
+    epoch += dt / EPOCH_DURATION;
+    if (epoch >= MAX_EPOCH) {
+      epoch = MAX_EPOCH;
+      render(epoch);
+      playing = false;
+      document.getElementById('embedPlay').textContent = '▶ Play';
+      return;
+    }
+    render(epoch);
+    animId = requestAnimationFrame(step);
+  }
+
+  document.getElementById('embedPlay').addEventListener('click', function() {
+    if (epoch >= MAX_EPOCH) { epoch = 0; initPoints(); }
+    playing = !playing;
+    this.textContent = playing ? '⏸ Pause' : '▶ Play';
+    if (playing) { lastTime = 0; animId = requestAnimationFrame(step); }
+    else { cancelAnimationFrame(animId); }
+  });
+
+  document.getElementById('embedReset').addEventListener('click', function() {
+    playing = false;
+    cancelAnimationFrame(animId);
+    document.getElementById('embedPlay').textContent = '▶ Play';
+    epoch = 0;
+    initPoints();
+    render(0);
+    document.getElementById('lossVal').textContent = '—';
+  });
+
+  // Build legend
+  const legend = document.getElementById('embedLegend');
+  CLASSES.forEach(cls => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-dot" style="background:${cls.color}"></div><span>${cls.name} (${POINTS_PER_CLASS} samples)</span>`;
+    legend.appendChild(item);
+  });
+
+  initPoints();
+  render(0);
+})();
+
+
+// ═══════════════════════════════════════════════════════
+// SECTION 2 — AUGMENTATION PLAYGROUND
+// ═══════════════════════════════════════════════════════
+(function() {
+  const AUG_DEFS = [
+    { id: 'crop',    label: 'Random Crop',     default: true  },
+    { id: 'color',   label: 'Color Jitter',    default: true  },
+    { id: 'blur',    label: 'Gaussian Blur',   default: false },
+    { id: 'gray',    label: 'Grayscale',       default: false },
+    { id: 'flip',    label: 'Horiz. Flip',     default: false },
+  ];
+
+  const state = {};
+  AUG_DEFS.forEach(a => state[a.id] = a.default);
+
+  // Build toggle controls
+  const container = document.getElementById('augControls');
+  AUG_DEFS.forEach(aug => {
+    const btn = document.createElement('div');
+    btn.className = 'aug-toggle' + (state[aug.id] ? ' on' : '');
+    btn.innerHTML = `<div class="tog-dot"></div>${aug.label}`;
+    btn.addEventListener('click', () => {
+      state[aug.id] = !state[aug.id];
+      btn.classList.toggle('on', state[aug.id]);
+      drawBoth();
+    });
+    container.appendChild(btn);
+  });
+
+  const cA = document.getElementById('augCanvasA');
+  const cB = document.getElementById('augCanvasB');
+  const ctxA = cA.getContext('2d');
+  const ctxB = cB.getContext('2d');
+  const W = cA.width, H = cA.height;
+
+  // Generate a simple synthetic "image" — geometric shapes
+  function drawBase(ctx, seed) {
+    const rng = mulberry32(seed);
+    ctx.fillStyle = '#0A0E13';
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw colourful shapes as our "image"
+    const shapes = [
+      { x:60,  y:60,  r:50,  color:'#1C7293' },
+      { x:200, y:100, r:40,  color:'#00C9A7' },
+      { x:100, y:180, r:35,  color:'#E3B341' },
+      { x:240, y:200, r:30,  color:'#F78166' },
+      { x:155, y:140, r:25,  color:'#BC8CFF' },
+    ];
+    shapes.forEach(s => {
+      ctx.beginPath();
+      ctx.arc(s.x + rng()*4, s.y + rng()*4, s.r, 0, Math.PI*2);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    });
+
+    // Add a grid texture
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    for (let x=0; x<W; x+=20) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y=0; y<H; y+=20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  function mulberry32(seed) {
+    return function() {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // Pixel-level augmentation on ImageData
+  function applyAugs(ctx, seed, viewSeed) {
+    const rng = mulberry32(viewSeed);
+
+    // Crop
+    if (state.crop) {
+      const cx = Math.floor(rng() * 60);
+      const cy = Math.floor(rng() * 50);
+      const cw = W - cx - Math.floor(rng()*40);
+      const ch = H - cy - Math.floor(rng()*40);
+      const img = ctx.getImageData(cx, cy, cw, ch);
+      ctx.clearRect(0,0,W,H);
+      ctx.fillStyle='#0A0E13'; ctx.fillRect(0,0,W,H);
+      // scale back
+      const tmp = document.createElement('canvas');
+      tmp.width = cw; tmp.height = ch;
+      tmp.getContext('2d').putImageData(img, 0, 0);
+      ctx.drawImage(tmp, 0, 0, W, H);
+    }
+
+    // Flip
+    if (state.flip && rng() > 0.5) {
+      const img = ctx.getImageData(0,0,W,H);
+      const d = img.data;
+      for (let y=0; y<H; y++) {
+        for (let x=0; x<W/2; x++) {
+          const li = (y*W+x)*4;
+          const ri = (y*W+(W-1-x))*4;
+          for (let c=0; c<4; c++) {
+            [d[li+c], d[ri+c]] = [d[ri+c], d[li+c]];
+          }
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    // Color jitter
+    if (state.color) {
+      const img = ctx.getImageData(0,0,W,H);
+      const d = img.data;
+      const br = 0.7 + rng()*0.6;   // brightness
+      const sat = 0.4 + rng()*1.2;  // saturation
+      const hueShift = (rng()-0.5)*60;
+      for (let i=0; i<d.length; i+=4) {
+        let r=d[i], g=d[i+1], b=d[i+2];
+        // brightness
+        r*=br; g*=br; b*=br;
+        // saturation
+        const gray = 0.299*r + 0.587*g + 0.114*b;
+        r = gray + sat*(r-gray);
+        g = gray + sat*(g-gray);
+        b = gray + sat*(b-gray);
+        d[i]   = Math.max(0,Math.min(255,r));
+        d[i+1] = Math.max(0,Math.min(255,g));
+        d[i+2] = Math.max(0,Math.min(255,b));
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    // Gaussian blur (box blur approximation)
+    if (state.blur) {
+      const img = ctx.getImageData(0,0,W,H);
+      const src = new Uint8ClampedArray(img.data);
+      const d = img.data;
+      const r = 3;
+      for (let y=r; y<H-r; y++) {
+        for (let x=r; x<W-r; x++) {
+          for (let c=0; c<3; c++) {
+            let sum=0, count=0;
+            for (let dy=-r; dy<=r; dy++) {
+              for (let dx=-r; dx<=r; dx++) {
+                sum += src[((y+dy)*W+(x+dx))*4+c];
+                count++;
+              }
+            }
+            d[(y*W+x)*4+c] = sum/count;
+          }
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    // Grayscale
+    if (state.gray && rng() > 0.3) {
+      const img = ctx.getImageData(0,0,W,H);
+      const d = img.data;
+      for (let i=0; i<d.length; i+=4) {
+        const g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+        d[i]=d[i+1]=d[i+2]=g;
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+  }
+
+  let augSeed = 42;
+
+  function drawBoth() {
+    // Draw base image
+    drawBase(ctxA, augSeed);
+    drawBase(ctxB, augSeed);
+    // Apply different augmentation sequences to each view
+    applyAugs(ctxA, augSeed, augSeed + 1000);
+    applyAugs(ctxB, augSeed, augSeed + 2000);
+  }
+
+  // Re-randomize on click
+  cA.addEventListener('click', () => { augSeed = Math.floor(Math.random()*9999); drawBoth(); });
+  cB.addEventListener('click', () => { augSeed = Math.floor(Math.random()*9999); drawBoth(); });
+
+  drawBoth();
+  // Add click hint
+  const hint = document.createElement('div');
+  hint.style.cssText = 'font-family:var(--mono);font-size:0.7rem;color:var(--muted);text-align:center;margin-top:0.5rem;';
+  hint.textContent = 'Click either image to randomize the source image';
+  document.getElementById('augCanvasB').parentElement.parentElement.after(hint);
+})();
+
+
+// ═══════════════════════════════════════════════════════
+// SECTION 3 — NT-XENT LOSS EXPLORER
+// ═══════════════════════════════════════════════════════
+(function() {
+  const tauSlider   = document.getElementById('tauSlider');
+  const batchSlider = document.getElementById('batchSlider');
+  const simSlider   = document.getElementById('simSlider');
+
+  function getNegSimMean(tau, N) {
+    // Expected average cosine sim between unrelated embeddings
+    // decreases slowly with batch size (more diverse negatives)
+    return 0.05 + 0.1 * Math.exp(-N/500);
+  }
+
+  function computeLoss(tau, N, sim_pos) {
+    // numerator
+    const num = Math.exp(sim_pos / tau);
+    // denominator: num + (2N-2) negatives with mean neg sim
+    const negSim = getNegSimMean(tau, N);
+    const negCount = 2*N - 2;
+    const denom = num + negCount * Math.exp(negSim / tau);
+    return { loss: -Math.log(num / denom), num, denom, negCount };
+  }
+
+  function update() {
+    const tau   = parseFloat(tauSlider.value);
+    const N     = parseInt(batchSlider.value);
+    const sim   = parseFloat(simSlider.value);
+
+    document.getElementById('tauVal').textContent   = tau.toFixed(2);
+    document.getElementById('batchVal').textContent = N;
+    document.getElementById('simVal').textContent   = sim.toFixed(2);
+
+    const { loss, num, denom, negCount } = computeLoss(tau, N, sim);
+
+    document.getElementById('lossResult').textContent    = loss.toFixed(3);
+    document.getElementById('negCount').textContent      = negCount;
+    document.getElementById('numeratorVal').textContent  = num.toFixed(2);
+    document.getElementById('denominatorVal').textContent = denom.toFixed(2);
+
+    drawLossChart(tau, N, sim);
+    drawNegChart(tau, N, sim);
+  }
+
+  // ── Chart 1: Loss vs. positive similarity ──
+  function drawLossChart(tau, N, simCurrent) {
+    const canvas = document.getElementById('lossChart');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0A0E13'; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l:44, r:16, t:16, b:28 };
+    const gw = W - pad.l - pad.r;
+    const gh = H - pad.t - pad.b;
+
+    const sims = [];
+    for (let s = -1; s <= 1; s += 0.02) sims.push(s);
+
+    // Draw two tau curves for comparison
+    const taus = [tau, Math.min(tau * 3, 1.0)];
+    const colors = ['#00C9A7', '#30363D'];
+
+    // Compute max loss for scale
+    let maxLoss = 0;
+    taus.forEach(t => {
+      sims.forEach(s => {
+        const {loss} = computeLoss(t, N, s);
+        if (isFinite(loss)) maxLoss = Math.max(maxLoss, loss);
+      });
+    });
+    maxLoss = Math.min(maxLoss, 12);
+
+    // Grid
+    ctx.save();
+    ctx.strokeStyle = '#1C2333'; ctx.lineWidth = 1;
+    for (let i=0; i<=4; i++) {
+      const y = pad.t + gh * (i/4);
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l+gw, y); ctx.stroke();
+      ctx.fillStyle = '#30363D'; ctx.font = '10px JetBrains Mono, monospace';
+      ctx.fillText((maxLoss*(1-i/4)).toFixed(1), 2, y+4);
+    }
+    ctx.restore();
+
+    // Draw curves
+    taus.forEach((t, ti) => {
+      ctx.beginPath();
+      ctx.strokeStyle = colors[ti]; ctx.lineWidth = ti===0?2:1;
+      ctx.globalAlpha = ti===0?1:0.3;
+      let first = true;
+      sims.forEach(s => {
+        const {loss} = computeLoss(t, N, s);
+        if (!isFinite(loss)) return;
+        const x = pad.l + gw * ((s+1)/2);
+        const y = pad.t + gh * (1 - Math.min(loss,maxLoss)/maxLoss);
+        if (first) { ctx.moveTo(x,y); first=false; } else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+
+    // Current sim marker
+    const mx = pad.l + gw * ((simCurrent+1)/2);
+    const {loss: curLoss} = computeLoss(tau, N, simCurrent);
+    const my = pad.t + gh * (1 - Math.min(curLoss,maxLoss)/maxLoss);
+    ctx.beginPath();
+    ctx.arc(mx, my, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#00C9A7'; ctx.fill();
+
+    // X-axis label
+    ctx.fillStyle = '#30363D'; ctx.font = '10px JetBrains Mono, monospace';
+    ctx.fillText('-1', pad.l, H-6);
+    ctx.fillText('0', pad.l + gw/2 - 4, H-6);
+    ctx.fillText('+1', pad.l + gw - 12, H-6);
+    ctx.fillStyle = '#00C9A7';
+    ctx.fillText('τ='+tau.toFixed(2), pad.l+4, pad.t+14);
+    ctx.fillStyle = '#30363D';
+    ctx.fillText('τ='+(Math.min(tau*3,1)).toFixed(2)+' (larger)', pad.l+4, pad.t+26);
+  }
+
+  // ── Chart 2: Loss vs. batch size ──
+  function drawNegChart(tau, N, sim) {
+    const canvas = document.getElementById('negChart');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0A0E13'; ctx.fillRect(0, 0, W, H);
+
+    const pad = { l:44, r:16, t:16, b:28 };
+    const gw = W - pad.l - pad.r;
+    const gh = H - pad.t - pad.b;
+
+    const batches = [];
+    for (let b=32; b<=4096; b+=32) batches.push(b);
+
+    let maxL = 0;
+    batches.forEach(b => { const {loss} = computeLoss(tau, b, sim); if (isFinite(loss)) maxL=Math.max(maxL,loss); });
+    maxL = Math.max(maxL, 0.1);
+
+    // Grid
+    ctx.save();
+    ctx.strokeStyle = '#1C2333'; ctx.lineWidth = 1;
+    for (let i=0; i<=4; i++) {
+      const y = pad.t + gh*(i/4);
+      ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+gw,y); ctx.stroke();
+      ctx.fillStyle='#30363D'; ctx.font='10px JetBrains Mono, monospace';
+      ctx.fillText((maxL*(1-i/4)).toFixed(2), 2, y+4);
+    }
+    ctx.restore();
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = '#E3B341'; ctx.lineWidth = 2;
+    let first = true;
+    batches.forEach((b, bi) => {
+      const {loss} = computeLoss(tau, b, sim);
+      if (!isFinite(loss)) return;
+      const x = pad.l + gw*(bi/(batches.length-1));
+      const y = pad.t + gh*(1-Math.min(loss,maxL)/maxL);
+      if (first) { ctx.moveTo(x,y); first=false; } else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Current batch marker
+    const bi = batches.indexOf(N) >= 0 ? batches.indexOf(N) : Math.round((N-32)/32);
+    const mx = pad.l + gw * (Math.max(0, Math.min(bi, batches.length-1))/(batches.length-1));
+    const {loss:curL} = computeLoss(tau, N, sim);
+    const my = pad.t + gh*(1-Math.min(curL,maxL)/maxL);
+    ctx.beginPath(); ctx.arc(mx,my,5,0,Math.PI*2);
+    ctx.fillStyle='#E3B341'; ctx.fill();
+
+    // X labels
+    ctx.fillStyle='#30363D'; ctx.font='10px JetBrains Mono, monospace';
+    ctx.fillText('32', pad.l, H-6);
+    ctx.fillText('2048', pad.l+gw/2-14, H-6);
+    ctx.fillText('4096', pad.l+gw-24, H-6);
+  }
+
+  tauSlider.addEventListener('input', update);
+  batchSlider.addEventListener('input', update);
+  simSlider.addEventListener('input', update);
+
+  update();
+})();
+
+// ── Nav active state on scroll ──
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) cur = s.id; });
+  navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#'+cur));
+});
+</script>
+</body>
+</html>
