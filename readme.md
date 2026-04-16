@@ -3,6 +3,7 @@
 Interactive web demo for CS 5330 Assessment #2. Built to accompany a presentation on contrastive self-supervised learning via SimCLR.
 
 **Live site:** [your-username.github.io/your-repo-name](https://your-username.github.io/your-repo-name)
+**Slide Video** [YouTube](https://youtu.be/-oibWQ9iLXQ)
 
 ---
 
